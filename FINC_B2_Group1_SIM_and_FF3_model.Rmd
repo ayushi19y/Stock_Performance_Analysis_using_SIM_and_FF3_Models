@@ -1,0 +1,179 @@
+---
+title: "Comparison of SIM and Fama French 3-Factor Regression Model for Analysis of Stock Performance"
+author: "Grace Fa, Christian Franco, Suhas Nagabhushan, Ayushi Yadav"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+When making decisions about addition of assets to a portfolio, a wise approach is to figure out the theoretically appropriate required rate of return of the asset in question. Even with a well diversified portfolio, there is always a risk involved. Therefore, investors usually seek out for asset investments that compensate for that risk, an area in which analytics plays a major role. 
+The Arbitrage Pricing Theory in finance suggests that asset's returns can be predicted using the linear relationship between the asset’s expected return and a number of macroeconomic variables that capture systematic risk (Market risks that cannot be diversified away - Recession, Interest Rates and so on).
+The FAMA FRENCH 3 factor model is an asset pricing model that expands on the Capital Asset Pricing Model (CAPM) or the Single Index Model (SIM) Model to adjust for out performance tendencies and provide a more thorough tool to measure portfolio performance and measure risk factors.
+
+We have the following linear equation.
+
+With SIM:
+$$ \widehat{exRET} = \alpha + \beta1*FacMkt $$
+With 3-FF model:
+$$ \widehat{exRET} = \alpha + \beta1*FacMkt + \beta2*FacSMB + \beta3*FacHML $$
+In the two models,
+$$ \widehat{exRET}: is \ expected \ excess \ return $$
+$$ FacMkt : is \ the\ excess\ return\ on\ the\ market\ portfolio$$
+$$ FacSMB : is\ the\ size\ premium\ (small\ minus\ big)$$
+$$ FacHML : is\ the\ value\ premium\ (high\ minus\ low)$$
+$$ \beta1,2,3 : refer\ to\ the\ factor\ coefficients$$
+
+# Scope of Analysis
+The primary objective of this report is to validate the empirical accuracy of the Single Index Model or the CAPM model and the Fama french 3 factor model by running a linear regression for both the Models and comparing the Prediction Accuracy.
+
+# Data Description
+The data used for the analysis is taken from 2 csv files providing daily stock returns for a sample of firms and second one providing daily values of market interest rate along with the three Fama-French factors - Market, Size and Value Factors for the corresponding firms. 
+
+# Analysis Methodology
+##Initial Steps: Loading Packages
+The initial steps that go into running any successful analysis are essentially the same starting with loading the required packages if using any. The analysis data contains data field in two different formats since the data is being extracted from two different csv files. Base R commands for date and time are unintuitive and thus the analysis requires the use of the lubridate package making it easier to work with date time and parsing its components. The dplyr package is used for effective and convenient data manipulation throughout the code. Other libraries such as data.table for proper, quantmod, required for delivering quality analysis results.
+
+## Data Extraction
+Initially extraction of data is done by reading the two given csv files and loading them on to respective data frames. Further data extraction is done using the dplyr package, the relevant data is selected, that is training and prediction periods assigned to a new variable, which will be input into a data frame. 
+
+## Data Cleaning
+The data extracted from the ‘Data Extraction’ process contains missing data and null tickers. This is removed from the data frame by merging the extracted data frames into a single data frame with date as the data arranging factor. This gives a data frame that is ready for regression and other calculations.  
+
+## Regression Analysis
+The data frame now contains the required data to perform regression analysis. The data frame is now worked on to extract and subset data with respect to training and prediction periods. Regression analysis is performed on the extracted data grouped by the ticker. The regression analysis of a single index model  is first performed after which regression on FF3 is performed. 
+
+## Model Training
+When training a model, it is always advisable to use approx 70% of the data for training period, and predict the values of the rest 30% using the model.
+In the following code is developing a function which takes 4 inputs: daily data from 2 csv files for stock returns and risk factors and inputs for training and testing periods.
+
+## Prediction 
+The firms are grouped again based of their ticker values. The code uses the predict function to predict the stock returns of the test data based on the trained SIM and FF3 models in the previous step. The predict function is iterated inside a for loop running iterations for each ticker for the entire length of the test data frame. 
+The results are combined in a data frame for a proper display format using the rbind() function. The same methodology is used to predict results for both the models, each model running its own iteration for prediction. 
+
+## Initiating and Displaying Results
+Because the regression is run on a group of tickers, the summary statistics of the regression cannot be just obtained with the summary() function calling the regression. To obtain the results from the regression, we have first created new variables for R-square and alpha value for both models, storing empty lists with length equal to the number of regression groups. The lists for each statistics are populated with their corresponding Ticker values by running them through a for loop running iterations for number of unique ticker values. 
+A similar methodology is adopted for calculating the mean absolute error and the standard deviation. The exception is that instead of retrieving the values from the regression results, the mean absolute error and standard deviation values are calculated inside the for loop for each unique ticker for both SIM and FF3 models.
+The final results obtained are combined in a single table based on which a second summary table is calculated with percentage values for R-Square, Mean Absolute Error and Standard Deviation.
+
+## Plotting R-Squared Values for SIM and FF3
+The ggplot 2 library is used to plot the graph of R-squared values of the SIM and Fama French Model for each Ticker. The Ticker object containing the R-squared values for both the models is passed through the plot() function with type "o" as the argument for type, returning a overplotted points and lines type graph between Tickers and their corresponding r-squared values for the SIM models. Arguments for labeling xaxis (xlab), y axis (ylab) and the title of the graph (main) are passed inside the same function. Bullet peaks are defining the r-squared value for each ticker, defined by setting the pch argument in th plot function to 20. Color of the obtained graph is set to red by passing the col = "red" argument inside the plot function as well. 
+The lines() function is used to plot the R-squared for the Fama French regression with type = "o" argument and the color of the line set to blue. 
+The range of values on the axes are defined with the axis function, taking inputs of side, labels and points at which the tick marks are to be indicated. A legend is created with the legend function to finally return and polished graph R-squared values for both the SIM and FF3 models.
+
+
+### Input Data
+```{r message=FALSE}
+#install.packages("data.table",type = "binary")
+library(dplyr) 
+library(lubridate) 
+library(ggplot2) 
+library(tseries) 
+library(quantmod) 
+library(data.table)
+myfile <- "/Users/ayushiyadav/Desktop/RIT/SEMESTER_5/Financial Analytics/Stock_Performance_Analysis_using_SIM_Aand_FF3_Models/780 B2 Stocks daily (1).csv" 
+myfile2 <- "/Users/ayushiyadav/Desktop/RIT/SEMESTER_5/Financial Analytics/Stock_Performance_Analysis_using_SIM_Aand_FF3_Models/780 B2 FF3factors daily (1).csv"
+stocks <- read.csv(myfile,na.strings = "C")
+market <- read.csv(myfile2,na.strings = "C")
+stocks$date <- mdy(stocks$date)
+stocks$date <- as.numeric(format(stocks$date, "%Y%m%d"))
+colnames(market)[1] <- 'date'  
+```
+
+
+### Data Manipulation
+```{r message=FALSE}
+accuracy <- function(stocks_file,market_file,train,test) {
+  #----------------Data Processing--------------#
+  df <- merge(stocks_file, market_file, by = 'date') #combine the two files by the same variable
+  df[!complete.cases(df),] #check missing date
+  df <- df[!is.na(df$TICKER) & df$TICKER!='',] #delete the Na and null value in the TICKER 
+  df$year <- substring(df$date,1,4)
+  df %<>% group_by(TICKER, year) %>% mutate(RET=na.aggregate(RET)) #Replace Na values with their respective mean based on year
+  df1 <- df %>%
+    select(date, TICKER, RET, Mkt.RF, SMB, HML, RF, year) %>%
+    mutate(exRET = RET - (RF/100), FacMkt = Mkt.RF/100, FacSMB = SMB/100, FacHML = HML/100, rf = RF/100) %>%
+    select(date, TICKER, exRET, FacMkt, FacSMB, FacHML, year)
+  df1 <- data.frame(df1)
+  #----------------SIM and 3FF model--------------#
+  df2 <- subset(df1, df1$date >= train[1] & df1$date <= train[2]) #train period
+  df3 <- subset(df1, df1$date >= test[1] & df1$date <= test[2]) #test period
+  df4 <- df2 %>% group_by(TICKER) %>% do(SIM = lm(exRET ~ FacMkt, data = .))
+  df5 <- df2 %>% group_by(TICKER) %>% do(FF3 = lm(exRET ~ FacMkt + FacSMB + FacHML, data = .))
+  df55 <- split(df3,df3$TICKER,drop = TRUE) # want to find the exRET value by TICKER
+  df6 <- data.frame()
+  for (i in 1:length(df4$SIM)){#predict SIM
+    df7 <- df3 %>% group_by(TICKER) %>% do (SIM_predict = predict(df4$SIM[[i]], newdata = .))
+    df6 <- rbind(df6,df7)}
+  df8 <- data.frame()
+  for (i in 1:length(df5$FF3)){#predict FF3
+    df9 <- df3 %>% group_by(TICKER) %>% do (FF3_predict = predict(df5$FF3[[i]], newdata =.))
+    df8 <- rbind(df8,df9)}
+  df11 <- data.frame()
+  for (i in 1:length(unique(df3$TICKER))){
+    df10 <- df6[i*22,]
+    df11 <- rbind(df11,df10)}
+  df12 <- data.frame()
+  for (i in 1:length(unique(df3$TICKER))){
+    df13 <- df8[i*22,]
+    df12 <- rbind(df12,df13)}
+  #----------------inititate result--------------#
+  Rsq_SIM <- c(1,length(unique(df4$TICKER)))
+  alpha_SIM <- c(1,length(unique(df4$TICKER)))
+  MAPE_SIM <- c(1,length(unique(df11$TICKER)))
+  stde_SIM <- c(1,length(unique(df11$TICKER)))
+  Rsq_FF3 <- c(1,length(unique(df5$TICKER)))
+  alpha_FF3 <- c(1,length(unique(df5$TICKER)))
+  MAPE_FF3 <- c(1,length(unique(df12$TICKER)))
+  stde_FF3 <- c(1,length(unique(df12$TICKER)))
+  #----------------save result--------------#
+  for (i in 1:length(unique(df2$TICKER))){
+    Rsq_SIM[i] <- summary(df4$SIM[[i]])$r.squared 
+    alpha_SIM[i] <-summary(df4$SIM[[i]])$coefficients[1] 
+    Rsq_FF3[i] <- summary(df5$FF3[[i]])$r.squared 
+    alpha_FF3[i] <- summary(df5$FF3[[i]])$coefficients[1]}
+  for (i in 1:length(unique(df3$TICKER))){
+    MAPE_SIM[i] <- mean(abs(df11$SIM_predict[[i]] - df55[[i]][[3]]))
+    stde_SIM[i] <- sd(abs(df11$SIM_predict[[i]] - df55[[i]][[3]]))
+    MAPE_FF3[i] <- mean(abs(df12$FF3_predict[[i]] - df55[[i]][[3]]))
+    stde_FF3[i] <- sd(abs(df12$FF3_predict[[i]] - df55[[i]][[3]]))}
+  #----------------output result--------------#
+  table1 <- data.frame(TICKER = df4$TICKER, Rsq_SIM = Rsq_SIM, Rsq_FF3 = Rsq_FF3,alpha_SIM = alpha_SIM, alpha_FF3 = alpha_FF3) 
+  table2 <- data.frame(TICKER = df11$TICKER,MAPE_SIM = MAPE_SIM, 
+                       MAPE_FF3 = MAPE_FF3, stde_SIM = stde_SIM, stde_FF3 = stde_FF3)
+  summary_table <- merge(table1,table2, by = 'TICKER')
+  table3 <- apply(summary_table[,-1],2,mean)
+  summary_table2 <- data.frame(Rsq_percent = (table3[['Rsq_FF3']]-table3[['Rsq_SIM']])/table3[['Rsq_SIM']]*100,
+                             MAPE_percent = (table3[['MAPE_FF3']]-table3[['MAPE_SIM']])/table3[['MAPE_SIM']]*100,
+                              stde_Percent = (table3[['stde_FF3']]-table3[['stde_SIM']])/table3[['stde_SIM']]*100 )
+  Ticker <- summary_table[,1]
+  Ticker <- cbind(Ticker,round(summary_table[,2:9],5))
+  summary_table2 <- round(summary_table2, 5)
+  cat("Results","\n")
+  print(Ticker)
+  cat("Summary of Results","\n")
+  print(round(table3,5))  
+  cat("Accuracy based on R-Square, mean absolute prediction error and standard deviation of error","\n")
+  print(summary_table2)
+  #----------------Plot the chart--------------#
+  plot(Ticker[,'Rsq_SIM'],type = "o",pch=20, col = "red", xlab = "Ticker", ylab = "R Square Values",main = "Comparison of R Square between SIM and FF3", ylim = c(0,0.9), xaxt='n', yaxt='n' )
+  lines(Ticker[,'Rsq_FF3'], type = "o", col = "blue")
+  axis(1, at=1:20, labels = Ticker[,1], cex.axis=0.8, las=2)
+  axis(2,at=seq(0,0.9,by=0.1), cex.axis=0.8, las=1)
+  legend(1,0.2,legend = c('SIM','Fama-French Model'), col = c("red","blue"), lty = 1)}
+```
+
+```{r}
+accuracy(stocks,market,c(20050101,20121231),c(20130101,20141231))
+```
+
+# Results and Discussion
+The accuracy of the models based on R-Square, mean absolute prediction error and the standard deviation is higher for the Fama-French factor model as compared to Single Index Model as seen in the summary of the values generated. We can infer that the Single Index model is slightly better suited for the data as compared to the FF3 model. The accuracy based on R-square and the standard deviation is higher by a percentage but the accuracy based on mean absolute error is relatively insignificant for this comparison.
+
+# Conclusion
+The R-Square value picked for comparison indicates the percent of the variance in the models. We can conclude from the output and graph that having more factors to the regression model would give a better r-squared fit. Based on the R-square values, we can also observe that the goodness of fit for both models is similar. Nevertheless, the higher the value of R-square, the better the model fits our data. Although, R-Square provides a relationship between model and response variable, it doesn’t provide a conclusive result. Hence, we need to observe other factors as well.
